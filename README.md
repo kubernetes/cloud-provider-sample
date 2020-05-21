@@ -8,7 +8,7 @@ build artifact and adds to it the Cloud Controller Manager and CSI Daemon Set.
 
 ## Community, discussion, contribution, and support
 
-Learn how to engage with the Kubernetes community on the [community page](http://kubernetes.io/community/).
+Learn how to engage with the Kubernetes community on the [community page](https://kubernetes.io/community/).
 
 You can reach the maintainers of this project at:
 
