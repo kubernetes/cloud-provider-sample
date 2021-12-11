@@ -2,8 +2,9 @@
 #############           Short Cuts   ###################
 ######################################################################## 
 
-echo "autocmd FileType yaml setlocal et ts=2 ai sw=2 nu sts=0" >> ~/.vimrc
 echo "set ts=2 sw=2" >> ~/.vimrc
+
+echo "autocmd FileType yaml setlocal et ts=2 ai sw=2 nu sts=0" >> ~/.vimrc
 
 alias kcsc='k config set-context'
 alias kcuc="k config use-context"
@@ -33,6 +34,33 @@ alias ke="kubectl edit"
 ########################################################################  
 #############            Troubleshooting Clusters    ###################
 ######################################################################## 
+
+ETCDCTL_API=3 etcdctl snapshot save /home/cloud_user/etcd_backup.db \
+--endpoints=https://etcd1:2379 \
+--cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
+--cert=/home/cloud_user/etcd-certs/etcd-server.crt \
+--key=/home/cloud_user/etcd-certs/etcd-server.key
+
+sudo systemctl stop etcd
+sudo rm -rf /var/lib/etcd
+
+
+sudo ETCDCTL_API=3 etcdctl snapshot restore /home/cloud_user/etcd_backup.db \
+--initial-cluster etcd-restore=https://etcd1:2380 \
+--initial-advertise-peer-urls https://etcd1:2380 \
+--name etcd-restore \
+--data-dir /var/lib/etcd
+
+sudo chown -R etcd:etcd /var/lib/etcd
+
+sudo systemctl start etcd
+
+ETCDCTL_API=3 etcdctl get cluster.name \
+--endpoints=https://etcd1:2379 \
+--cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
+--cert=/home/cloud_user/etcd-certs/etcd-server.crt \
+--key=/home/cloud_user/etcd-certs/etcd-server.key
+
 
 sudo more /etc/kubernetes/manifests/etcd.yaml
 ps -aux | grep etcd
@@ -135,7 +163,9 @@ kubectl create deployment nginx --image ngins
 kubectl get events --field-selector type=Warning
 kubectl get events --field-selector type=Warning,reason=Failed
 
-
+kubectl get pods --all-namespaces --field-selector spec.nodeName=acgk8s-worker2
+#to use API for same query find below
+curl --cacert ca.crt --cert apiserver.crt --key apiserver.key  https://<server>:<port>/api/v1/namespaces/<namespace>/pods?fieldSelector=spec.nodeName%3Dsomenodename
 #We can also monitor the events as they happen with watch
 kubectl get events --watch &
 kubectl scale deployment loggingdemo --replicas=5
