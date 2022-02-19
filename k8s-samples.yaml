@@ -207,6 +207,47 @@ spec:
 EOF
 ---
 
-########################################################################  
-## 
+ 
+## DEFAULT DENY of all incoming calls to a namespace
 ######################################################################## 
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: web-auth
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+
+---
+
+## kubectl get namespace web-auth --show-labels
+## kubectl get pods -n web-auth --show-labels
+
+#    ALLOW only particular POD from a PARTICULAR namespace
+######################################################################## 
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-server-ingress
+  namespace: web-auth
+spec:
+  podSelector:
+    matchLabels:
+      app: auth-server
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          role: auth
+      podSelector:
+        matchLabels:
+          app: auth-client
+    ports:
+    - protocol: TCP
+      port: 80
