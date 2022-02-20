@@ -2,8 +2,8 @@
 #############    UPGRADE CLUSTER   ###################
 ######################################################################## 
 
-# Upgrade All Kubernetes Components on the Control Plane Node
-# Switch to the appropriate context with kubectl:
+### Upgrade All Kubernetes Components on the Control Plane Node
+### Switch to the appropriate context with kubectl:
 kubectl config use-context acgk8s
 Upgrade kubeadm:
 
@@ -63,7 +63,7 @@ kubectl uncordon acgk8s-worker1
 Repeat the process above for acgk8s-worker2 to upgrade the other worker node.
 
 ########################################################################  
-#############    Back UP ETCD data & Restore    ###################
+###  Back UP ETCD data & Restore    ###################
 ######################################################################## 
 
 Back Up the etcd Data
@@ -106,7 +106,7 @@ ETCDCTL_API=3 etcdctl get cluster.name \
 --key=/home/cloud_user/etcd-certs/etcd-server.key
 
 ########################################################################  
-########    Drain Worker Node 1 ##############
+###  Drain Worker Node 1 ##############
 Create a Pod That Will Only Be Scheduled on Nodes with a Specific Label
 ######################################################################## 
 
@@ -134,7 +134,7 @@ Expand the PersistentVolumeClaim
 
 
 ########################################################################  
-##       CIS Kubernetes Benchmark 
+###       CIS Kubernetes Benchmark 
 ########################################################################  
 Run kube-bench and Obtain a CIS Benchmark Report
 Download the kube-bench Job manifest files:
@@ -235,7 +235,7 @@ Once the STATUS shows Completed, view the Pod logs, replacing the Pod name place
 Check the results of the kube-bench tests. For the tests addressed, the results should now show [PASS]!
 
 ########################################################################  
-##       Checing the BINARIES and CHECKSUM 
+###       Checing the BINARIES and CHECKSUM 
 ########################################################################  
 VERSION=$(cat version.txt)
 
@@ -248,5 +248,47 @@ echo "$(<kubelet.sha256) kubelet" | sha256sum --check
 echo "$(<kube-apiserver.sha256) kube-apiserver" | sha256sum --check
 
 ########################################################################  
-##       Checing the BINARIES and CHECKSUM 
+###   Protect a Kubernetes Cluster with AppArmor    
+########################################################################
+
+sample AppArmor policy file to deny writes onto DISK.
+```
+#include <tunables/global>
+profile k8s-deny-write flags=(attach_disconnected) {
+  #include <abstractions/base>
+  file,
+  # Deny all file writes.
+  deny /** w,
+}
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: password-db
+  namespace: auth
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/password-db: localhost/k8s-deny-write
+spec:
+  containers:
+  - name: password-db
+    image: radial/busyboxplus:curl
+    command: ['sh', '-c', 'while true; do if echo "The password is hunter2" > password.txt; then echo "Password hunter2 logged."; else echo "Password log attempt blocked."; fi; sleep 5; done']
+```
+using APPArmor.
+
+```
+sudo apparmor_parser apparmor-k8s-deny-write
+
+sudo cp apparmor-k8s-deny-write /etc/apparmor.d
+
+sudo chown root:root /etc/apparmor.d/apparmor-k8s-deny-write
+```
+kubectl exec password-db -n auth -- cat password.txt
+
+
+
 ########################################################################  
+###   
+########################################################################
