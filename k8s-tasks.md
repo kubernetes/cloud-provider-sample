@@ -290,5 +290,115 @@ kubectl exec password-db -n auth -- cat password.txt
 
 
 ########################################################################  
-###   
+###   POD SECURITY POLICIES
+########################################################################
+
+[](images/psp.png)
+<img src="images/psp.png" width="400" >
+
+sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
+
+
+add this  --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
+
+
+```
+vim psp-no-privileged.yml
+
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: psp-no-privileged
+spec:
+  privileged: false
+  runAsUser:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - persistentVolumeClaim
+  - secret
+  - projected
+
+```
+Create an RBAC Setup to Apply the PodSecurityPolicy in the auth Namespace
+
+```
+vim cr-use-psp-no-privileged.yml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cr-use-psp-no-privileged
+rules:
+- apiGroups: ['policy']
+  resources: ['podsecuritypolicies']
+  verbs:     ['use']
+  resourceNames:
+  - psp-no-privileged
+
+--------
+
+vim rb-auth-sa-psp.yml
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rb-auth-sa-psp
+  namespace: auth
+roleRef:
+  kind: ClusterRole
+  name: cr-use-psp-no-privileged
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: auth-sa
+  namespace: auth
+
+------
+PRIVILEGED POD
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: privileged-pod
+  namespace: auth
+spec:
+  serviceAccount: auth-sa
+  containers:
+  - name: background-monitor
+    image: radial/busyboxplus:curl
+    command: ['sh', '-c', 'while true; do echo "Running..."; sleep 5; done']
+    securityContext:
+      privileged: true
+
+
+-----
+NON PRIVILEGED POD
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: non-privileged-pod
+  namespace: auth
+spec:
+  serviceAccount: auth-sa
+  containers:
+  - name: background-monitor
+    image: radial/busyboxplus:curl
+    command: ['sh', '-c', 'while true; do echo "Running..."; sleep 5; done']
+
+```
+
+########################################################################  
+###   Manage Sensitive Config Data with Kubernetes Secrets
 ########################################################################
