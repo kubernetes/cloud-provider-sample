@@ -1,6 +1,19 @@
 ### default configuration files location:
 
-kubelet configuration = /var/lib/kubelet/config.yaml
+```
+kubelet configuration   =     /var/lib/kubelet/config.yaml
+
+containerD configuration files  =    sudo vi /etc/containerd/config.toml
+
+Location for logs (not avail in KUBEADM clusters)
+-------------------------------------------------
+/var/log/kube-apiserver.log
+/var/log/kube-scheduler.log
+/var/log/kube-controller-manager.log
+
+
+
+```
 
 ## below path where secrets associated with serviceAccounts are mounted:
 ```
@@ -20,6 +33,8 @@ curl --cacert $CA -X GET https://kubernetes/api --header "Authorization: Bearer 
 curl  -X GET https://kubernetes/api --header "Authorization: Bearer $TOKEN" --insecure
 
 ```
+
+
 
 
 # VIM CHEATSHEET
@@ -42,3 +57,6 @@ This may be wanted after using :set noignorecase to make searches case sensitive
 
 ```
 
+# TMUX
+
+![](images/tmux.png)

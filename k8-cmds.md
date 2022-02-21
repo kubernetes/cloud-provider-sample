@@ -1,7 +1,8 @@
 ########################################################################  
-#############           Short Cuts   ###################
+###          Short Cuts  
 ######################################################################## 
 
+```
 echo "set ts=2 sw=2" >> ~/.vimrc
 
 echo "autocmd FileType yaml setlocal et ts=2 ai sw=2 nu sts=0" >> ~/.vimrc
@@ -31,9 +32,22 @@ alias sb="--sort-by"
 alias ka="kubectl apply"
 alias ke="kubectl edit"
 
+```
+
 ########################################################################  
-#############            Troubleshooting Clusters    ###################
+###          Troubleshooting Clusters    
 ######################################################################## 
+
+```
+networking
+---------------
+
+If you want to spin up a throw away container for debugging.
+$ kubectl run tmp-shell --rm -i --tty --image nicolaka/netshoot -- /bin/bash
+
+And if you want to spin up a container on the host's network namespace.
+$ kubectl run tmp-shell --rm -i --tty --overrides='{"spec": {"hostNetwork": true}}' --image nicolaka/netshoot -- /bin/bash
+
 
 ETCDCTL_API=3 etcdctl snapshot save /home/cloud_user/etcd_backup.db \
 --endpoints=https://etcd1:2379 \
@@ -61,21 +75,23 @@ ETCDCTL_API=3 etcdctl get cluster.name \
 --cert=/home/cloud_user/etcd-certs/etcd-server.crt \
 --key=/home/cloud_user/etcd-certs/etcd-server.key
 
-
 sudo more /etc/kubernetes/manifests/etcd.yaml
 ps -aux | grep etcd
 
 kubectl exec -it etcd-c1-cp1 -n kube-system -- /bin/sh -c 'ETCDCTL_API=3 /usr/local/bin/etcd --version' | head
 
 #First, let's create create a secret that we're going to delete and then get back when we run the restore.
+------------------------------------------------------------------------------------------------------------
 kubectl create secret generic test-secret \
     --from-literal=username='svcaccount' \
     --from-literal=password='S0mthingS0Str0ng!'
 
-#Read the metadata from the backup/snapshot to print out the snapshot's status 
+#Read the metadata from the backup/snapshot to print out the snapshot's status
+------------------------------------------------------------------------------------------------------------
 sudo ETCDCTL_API=3 etcdctl --write-out=table snapshot status /var/lib/dat-backup.db
 
 #now let's delete an object and then run a restore to get it back
+------------------------------------------------------------------------------------------------------------
 kubectl delete secret test-secret 
 
 #Run the restore to a second folder...this will restore to the current directory
@@ -240,8 +256,6 @@ auth2      0m           0Mi
 
 HIGH_CPU_POD=$(kubectl top pod -n web --sort-by cpu -l app=auth | awk 'FNR == 2 {print $1}' | head -n 1 )
 
-
-
 sudo systemctl status kubelet.service
 sudo systemctl enable kubelet.service 
 sudo systemctl start kubelet.service
@@ -293,11 +307,14 @@ curl http://$SERVICEIP
 kubectl describe service hello-world-5
 kubectl get endpoints hello-world-5
 
+```
+
 
 ############################################################################ 
-##########   Cluster Architecture, Installtion & configuration #############
+###   Cluster Architecture, Installtion & configuration #############
 ############################################################################ 
 
+```
 kubectl get nodes -o wide
 kubectl get pods --namespace kube-system -o wide
 kubectl api-resources | grep pod
@@ -318,10 +335,12 @@ kubectl expose deployment hello-world \
      --port=80 --target-port=8080 \
      --dry-run=client -o yaml > service.yaml
 
+```
 
 ############################################################################ 
-##########   Services and Networking #############
+###  Services and Networking #############
 ############################################################################ 
+```
 kubectl create deployment hello-world-service-single --image=gcr.io/google-samples/hello-app:1.0
 kubectl scale deployment hello-world-service-single --replicas=2
 kubectl expose deployment hello-world-service-single --port=80 --target-port=8080 --type=ClusterIP
@@ -473,10 +492,12 @@ curl http://$LOADBALANCERIP:$PORT
 #The record is in the form <servicename>.<namespace>.<clusterdomain>. You may get an error that says ** server can't find hello-world.api.example.com: NXDOMAIN this is ok.
 nslookup hello-world-api.default.svc.cluster.local 10.96.0.10
 
+```
 ########################################################################  
-#############          WorkLoad Scheduling   ###################
+###        WorkLoad Scheduling   ###################
 ######################################################################## 
 
+```
 kubectl label pod hello-world-[tab][tab] app=DEBUG --overwrite
 kubectl get pods --show-labels
 
@@ -521,11 +542,11 @@ kubectl describe job hello-world-job
 watch 'kubectl describe job | head -n 11'
 
 kubectl get cronjobs -o yaml
-
+```
 ########################################################################  
-#############   configMap,   Storage , PV, PVC   ###################
+###   configMap,   Storage , PV, PVC   ###################
 ######################################################################## 
-
+```
 PODNAME=$(kubectl get pods | grep hello-world-alpha | awk '{print $1}' | head -n 1)
 kubectl exec -it $PODNAME -- /bin/sh -c "printenv | sort"
 
@@ -687,15 +708,14 @@ kubectl drain c1-node3 --ignore-daemonsets
 #Something that will cause pods to get created
 kubectl uncordon c1-node3
 
-
+```
 
 ########################################################################  
-#############   RBAC, Security  ###################
+###  RBAC, Security 
 ######################################################################## 
-
+```
 kubectl config view
 kubectl config view --raw
-
 
 
 #Let's read the certificate information out of our kubeconfig file
@@ -710,8 +730,6 @@ kubectl get pods -v 6
 
 #Clean up files no longer needed
 rm admin.crt
-
-
 
 
 #2 - Working with Service Accounts
@@ -1138,10 +1156,12 @@ kubectl get pods --namespace ns2
 #Clean up the user we createing the module 3 demos (or not you can keep it around)
 sudo userdel --remove demouser
 
+```
 ########################################################################  
-#############   API Objects ###################
+### API Objects 
 ######################################################################## 
 
+```
 #API Discovery
 #Get information about our current cluster context, ensure we're logged into the correct cluster.
 kubectl config get-contexts
@@ -1281,4 +1301,4 @@ kubectl get pods -o wide
 #Clean up when we're finished, delete our labels and Pods
 kubectl label node c1-node2 disk-
 kubectl label node c1-node3 hardware-
-
+```

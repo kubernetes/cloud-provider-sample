@@ -1,82 +1,103 @@
 ########################################################################  
-#############    UPGRADE CLUSTER   ###################
+###   UPGRADE CLUSTER   
 ######################################################################## 
 
-### Upgrade All Kubernetes Components on the Control Plane Node
-### Switch to the appropriate context with kubectl:
+#### Upgrade All Kubernetes Components on the Control Plane Node
+#### Switch to the appropriate context with kubectl:
 kubectl config use-context acgk8s
-Upgrade kubeadm:
 
+Upgrade kubeadm:
+```
 sudo apt-get update && \
 sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00
+```
 Drain the control plane node:
 
 kubectl drain acgk8s-control --ignore-daemonsets
+
 Plan the upgrade:
 
 sudo kubeadm upgrade plan v1.22.2
+
 Apply the upgrade:
 
 sudo kubeadm upgrade apply v1.22.2
-Upgrade kubelet and kubectl:
 
+Upgrade kubelet and kubectl:
+```
 sudo apt-get update && \
 sudo apt-get install -y --allow-change-held-packages kubelet=1.22.2-00 kubectl=1.22.2-00
+```
 Reload:
 
 sudo systemctl daemon-reload
+
 Restart kubelet:
 
 sudo systemctl restart kubelet
+
 Uncordon the control plane node:
 
 kubectl uncordon acgk8s-control
+
 Upgrade All Kubernetes Components on the Worker Node
+
 Drain the worker1 node:
 
 kubectl drain acgk8s-worker1 --ignore-daemonsets --force
+
 SSH into the node:
 
 ssh acgk8s-worker1
-Install a new version of kubeadm:
 
+Install a new version of kubeadm:
+```
 sudo apt-get update && \
 sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00
+```
 Upgrade the node:
 
 sudo kubeadm upgrade node
-Upgrade kubelet and kubectl:
 
+Upgrade kubelet and kubectl:
+```
 sudo apt-get update && \
 sudo apt-get install -y --allow-change-held-packages kubelet=1.22.2-00 kubectl=1.22.2-00
+```
 Reload:
 
 sudo systemctl daemon-reload
+
 Restart kubelet:
 
 sudo systemctl restart kubelet
+
 Type exit to exit the node.
 
 Uncordon the node:
 
 kubectl uncordon acgk8s-worker1
+
 Repeat the process above for acgk8s-worker2 to upgrade the other worker node.
 
 ########################################################################  
 ###  Back UP ETCD data & Restore    ###################
 ######################################################################## 
 
+```
 Back Up the etcd Data
 From the terminal, log in to the etcd server:
 
 ssh etcd1
 Back up the etcd data:
 
+
 ETCDCTL_API=3 etcdctl snapshot save /home/cloud_user/etcd_backup.db \
 --endpoints=https://etcd1:2379 \
 --cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
 --cert=/home/cloud_user/etcd-certs/etcd-server.crt \
 --key=/home/cloud_user/etcd-certs/etcd-server.key
+
 Restore the etcd Data from the Backup
 Stop etcd:
 
@@ -104,12 +125,14 @@ ETCDCTL_API=3 etcdctl get cluster.name \
 --cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
 --cert=/home/cloud_user/etcd-certs/etcd-server.crt \
 --key=/home/cloud_user/etcd-certs/etcd-server.key
+```
 
 ########################################################################  
 ###  Drain Worker Node 1 ##############
-Create a Pod That Will Only Be Scheduled on Nodes with a Specific Label
+### Create a Pod That Will Only Be Scheduled on Nodes with a Specific Label
 ######################################################################## 
 
+```
 Attempt to drain the worker1 node:
 kubectl drain acgk8s-worker1
 
@@ -122,20 +145,13 @@ kubectl drain acgk8s-worker1 --ignore-daemonsets --delete-emptydir-data --force
 
 kubectl label nodes acgk8s-worker2 disk=fast
 
-
 kubectl get pod fast-nginx -n dev -o wide
-
-########################################################################  
-Create a PersistentVolume
-Create a Pod That Uses the PersistentVolume for Storage
-Expand the PersistentVolumeClaim
-######################################################################## 
-
-
+```
 
 ########################################################################  
 ###       CIS Kubernetes Benchmark 
 ########################################################################  
+```
 Run kube-bench and Obtain a CIS Benchmark Report
 Download the kube-bench Job manifest files:
 
@@ -233,12 +249,14 @@ Once the STATUS shows Completed, view the Pod logs, replacing the Pod name place
         kubectl logs <CONTROL_PLANE_JOB_POD_NAME>
         kubectl logs <NODE_JOB_POD_NAME>
 Check the results of the kube-bench tests. For the tests addressed, the results should now show [PASS]!
+```
 
 ########################################################################  
 ###       Checing the BINARIES and CHECKSUM 
 ########################################################################  
 VERSION=$(cat version.txt)
 
+```
 curl -LO "https://dl.k8s.io/$VERSION/bin/linux/amd64/kubectl.sha256"
 curl -LO "https://dl.k8s.io/$VERSION/bin/linux/amd64/kubelet.sha256"
 curl -LO "https://dl.k8s.io/$VERSION/bin/linux/amd64/kube-apiserver.sha256"
@@ -246,6 +264,7 @@ curl -LO "https://dl.k8s.io/$VERSION/bin/linux/amd64/kube-apiserver.sha256"
 echo "$(<kubectl.sha256) kubectl" | sha256sum --check
 echo "$(<kubelet.sha256) kubelet" | sha256sum --check
 echo "$(<kube-apiserver.sha256) kube-apiserver" | sha256sum --check
+```
 
 ########################################################################  
 ###   Protect a Kubernetes Cluster with AppArmor    
@@ -402,3 +421,263 @@ spec:
 ########################################################################  
 ###   Manage Sensitive Config Data with Kubernetes Secrets
 ########################################################################
+
+```
+kubectl get secret db-pass -o yaml -n users
+
+echo aHVudGVyMgo= | base64 --decode > /home/cloud_user/dbpass.txt
+
+echo TrustNo1 | base64
+
+kubectl edit secret db-pass -n users
+
+```
+
+########################################################################  
+###   Move Kubernetes Pods to a Secured Runtime Sandbox (gVisor)
+########################################################################
+
+```
+Install gVisor and Create a containerd Sandbox Configuration
+Note: Perform the following steps on both the control plane and worker node.
+
+Install gVisor:
+
+curl -fsSL https://gvisor.dev/archive.key | sudo apt-key add -
+sudo add-apt-repository "deb [arch=amd64,arm64] https://storage.googleapis.com/gvisor/releases release main"
+
+sudo apt-get update && sudo apt-get install -y runsc
+Edit the containerd configuration file to add configuration for runsc:
+
+sudo vi /etc/containerd/config.toml
+In the disabled_plugins section, add the restart plugin:
+
+disabled_plugins = ["io.containerd.internal.v1.restart"]
+Under [plugins], scroll down to [plugins."io.containerd.grpc.v1.cri".containerd.runtimes] and add the runsc runtime configuration:
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    ...
+    
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+    runtime_type = "io.containerd.runsc.v1"
+Scroll down to the [plugins."io.containerd.runtime.v1.linux"] block and set shim_debug to true:
+
+[plugins."io.containerd.runtime.v1.linux"]
+
+  ...
+
+  shim_debug = true
+To save and exit, type :wq and press Enter.
+
+Restart containerd:
+
+sudo systemctl restart containerd
+Verify that containerd is still running:
+
+sudo systemctl status containerd
+Close out of the worker node. The remainder of the lab will be completed using only the control plane node.
+
+Create a RuntimeClass for the Sandbox
+On the control plane node, create a RuntimeClass:
+
+```
+```
+vi runsc-sandbox.yml
+
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: runsc-sandbox
+handler: runsc
+Type :wq and press Enter.
+```
+```
+Create the sandbox in the cluster:
+
+kubectl create -f runsc-sandbox.yml
+Move All Pods in the questionablesoft Namespace to the New Runtime Sandbox
+Retrieve the Pods in the questionablesoft namespace:
+
+kubectl get pods -n questionablesoft
+Delete the Pods:
+
+kubectl delete pod questionablesoft-api -n questionablesoft --force
+
+kubectl delete pod questionablesoft-data -n questionablesoft --force
+Edit the questionablesoft-api.yml manifest file:
+
+vi questionablesoft-api.yml
+Under spec, add the runtimeClassName of runsc-sandbox:
+
+spec:
+  runtimeClassName: runsc-sandbox
+Type :wq and press Enter.
+
+Edit the questionablesoft-data.yml manifest file:
+
+vi questionablesoft-data.yml
+Add the runtimeClassName of runsc-sandbox:
+
+spec:
+  runtimeClassName: runsc-sandbox
+Type :wq and press Enter.
+
+Re-create the Pods:
+
+kubectl create -f questionablesoft-api.yml
+
+kubectl create -f questionablesoft-data.yml
+To verify the Pods are running, retrieve them from the questionablesoft namespace:
+
+kubectl get pods -n questionablesoft
+To verify the Pods are running in a gVisor sandbox, check the Pods' dmesg output:
+
+kubectl exec questionablesoft-api -n questionablesoft -- dmesg
+
+kubectl exec questionablesoft-data -n questionablesoft -- dmesg
+The output begins with Starting gVisor..., indicating the container process is running in a gVisor sandbox.
+
+Compare this output to the non-sandboxed Pod securicorp-api in the default namespace:
+
+kubectl exec securicorp-api -- dmesg
+```
+```
+sample POD with a runtimeClassName
+----------------------------------
+apiVersion: v1
+kind: Pod
+metadata:
+  name: questionablesoft-data
+  namespace: questionablesoft
+spec:
+  runtimeClassName: runsc-sandbox
+  containers:
+  - name: busybox
+    image: busybox
+    command: ['sh', '-c', 'while true; do echo "Running..."; sleep 5; done']
+```
+
+########################################################################  
+###   Automate Kubernetes Image Vulnerability Scanning
+########################################################################
+
+sudo vi /etc/kubernetes/admission-control/admission-control.conf
+
+```
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+- name: ImagePolicyWebhook
+  configuration:
+    imagePolicy:
+      kubeConfigFile: /etc/kubernetes/admission-control/imagepolicy_backend.kubeconfig
+      allowTTL: 50
+      denyTTL: 50
+      retryBackoff: 500
+      defaultAllow: false
+```
+
+sudo vi /etc/kubernetes/admission-control/imagepolicy_backend.kubeconfig
+
+```
+apiVersion: v1
+kind: Config
+clusters:
+- name: trivy-k8s-webhook
+  cluster:
+    certificate-authority: /etc/kubernetes/admission-control/imagepolicywebhook-ca.crt
+    server: ""
+contexts:
+- name: trivy-k8s-webhook
+  context:
+    cluster: trivy-k8s-webhook
+    user: api-server
+current-context: trivy-k8s-webhook
+preferences: {}
+users:
+- name: api-server
+  user:
+    client-certificate: /etc/kubernetes/admission-control/api-server-client.crt
+    client-key: /etc/kubernetes/admission-control/api-server-client.key
+
+```
+
+Enable Any Necessary Admission Control Plugins
+
+```
+sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
+
+--enable-admission-plugins=NodeRestriction,ImagePolicyWebhook
+
+```
+
+
+########################################################################  
+###   Threat Detection in Kubernetes with Falco
+########################################################################
+
+Create a Falco Rules File Configured To Scan the Container
+```
+- rule: spawned_process_in_nginx_container
+  desc: A process was spawned in the Nginx container.
+  condition: container.name = "nginx" and evt.type = execve
+  output: "%evt.time,%proc.name,%user.uid,%container.id,%container.name,%container.image"
+  priority: WARNING
+```
+
+Run Falco to Obtain a Report of the Activity and Save It to a File
+
+```
+sudo falco -r nginx-rules.yml -M 45 > /home/cloud_user/falco-report.log
+```
+
+########################################################################  
+###   Configure Audit Logging in Kubernetes
+########################################################################
+
+WRIET a AUDIT POLICY -- sudo vi /etc/kubernetes/audit-policy.yaml
+```
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+# Log request and response bodies for all changes to Namespaces.
+- level: RequestResponse
+  resources:
+  - group: ""
+    resources: ["namespaces"]
+
+# Log request bodies (but not response bodies) for changes to Pods and Services in the web Namespace.
+- level: Request
+  resources:
+  - group: ""
+    resources: ["pods", "services"]
+  namespaces: ["web"]
+
+# Log metadata for all changes to Secrets.
+- level: Metadata
+  resources:
+  - group: ""
+    resources: ["secrets"]
+
+# Create a catchall rule to log metadata for all other requests.
+- level: Metadata
+```
+Configure Audit Logging -- sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+- command:
+  - kube-apiserver
+  - --audit-policy-file=/etc/kubernetes/audit-policy.yaml
+  - --audit-log-path=/var/log/kubernetes/k8s-audit.log
+  - --audit-log-maxage=60
+  - --audit-log-maxbackup=1
+
+```
+
+########################################################################  
+###   
+########################################################################
+
+```
+
+```
