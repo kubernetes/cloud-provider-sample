@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-loadbalancer
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-world-loadbalancer
+  template:
+    metadata:
+      labels:
+        app: hello-world-loadbalancer
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-loadbalancer
+spec:
+  type: LoadBalancer
+  selector:
+    app: hello-world-loadbalancer
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080

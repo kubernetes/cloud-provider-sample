@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hello-world-ds
+spec:
+  selector:
+    matchLabels:
+      app: hello-world-app
+  template:
+    metadata:
+      labels:
+        app: hello-world-app
+    spec:
+      nodeSelector:
+        node: hello-world-ns
+      containers:
+        - name: hello-world
+          image: gcr.io/google-samples/hello-app:1.0

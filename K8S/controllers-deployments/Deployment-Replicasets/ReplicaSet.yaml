@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+    name: hello-world
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-world-pod
+  template:
+    metadata:
+      labels:
+        app: hello-world-pod
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0

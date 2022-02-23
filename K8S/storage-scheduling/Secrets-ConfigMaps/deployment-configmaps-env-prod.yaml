@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-configmaps-env-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-configmaps-env-prod
+  template:
+    metadata:
+      labels:
+        app: hello-world-configmaps-env-prod
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        envFrom:
+          - configMapRef:
+              name: appconfigprod
+        ports:
+        - containerPort: 8080

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-customdns
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-world-customdns
+  template:
+    metadata:
+      labels:
+        app: hello-world-customdns
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - 9.9.9.9
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-customdns
+spec:
+  selector:
+    app: hello-world-customdns
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080

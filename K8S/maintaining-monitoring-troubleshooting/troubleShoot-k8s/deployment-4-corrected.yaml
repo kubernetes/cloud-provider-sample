@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-4
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: hello-world-4
+  template:
+    metadata:
+      labels:
+        app: hello-world-4
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        resources:
+          requests:
+            cpu: "500m"
+        ports:
+        - containerPort: 8080

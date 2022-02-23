@@ -41,7 +41,6 @@ alias ke="kubectl edit"
 ```
 networking
 ---------------
-
 If you want to spin up a throw away container for debugging.
 $ kubectl run tmp-shell --rm -i --tty --image nicolaka/netshoot -- /bin/bash
 
@@ -49,16 +48,23 @@ And if you want to spin up a container on the host's network namespace.
 $ kubectl run tmp-shell --rm -i --tty --overrides='{"spec": {"hostNetwork": true}}' --image nicolaka/netshoot -- /bin/bash
 
 
-ETCDCTL_API=3 etcdctl snapshot save /home/cloud_user/etcd_backup.db \
---endpoints=https://etcd1:2379 \
---cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
---cert=/home/cloud_user/etcd-certs/etcd-server.crt \
---key=/home/cloud_user/etcd-certs/etcd-server.key
+backing up ETCD
+----------------
+ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+--cacert=/etc/kubernetes/pki/etcd/ca.crt \
+--cert=/etc/kubernetes/pki/etcd/server.crt \
+--key=/etc/kubernetes/pki/etcd/server.key \
+snapshot save /var/lib/dat-backup.db
+
+ETCDCTL_API=3 etcdctl --write-out=table \
+snapshot status /var/lib/dat-backup.db
 
 sudo systemctl stop etcd
 sudo rm -rf /var/lib/etcd
 
 
+restore the ETCD DATA
+--------------------
 sudo ETCDCTL_API=3 etcdctl snapshot restore /home/cloud_user/etcd_backup.db \
 --initial-cluster etcd-restore=https://etcd1:2380 \
 --initial-advertise-peer-urls https://etcd1:2380 \
@@ -66,7 +72,6 @@ sudo ETCDCTL_API=3 etcdctl snapshot restore /home/cloud_user/etcd_backup.db \
 --data-dir /var/lib/etcd
 
 sudo chown -R etcd:etcd /var/lib/etcd
-
 sudo systemctl start etcd
 
 ETCDCTL_API=3 etcdctl get cluster.name \

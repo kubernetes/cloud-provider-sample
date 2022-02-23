@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-gpu
+  template:
+    metadata:
+      labels:
+        app: hello-world-gpu
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+      nodeSelector:
+        hardware: local_gpu
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-ssd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-ssd
+  template:
+    metadata:
+      labels:
+        app: hello-world-ssd
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+      nodeSelector:
+        disk: local_ssd
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080

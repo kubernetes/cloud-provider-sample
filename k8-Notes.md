@@ -1,9 +1,19 @@
+![](images/kubernetes-primitives.png)
+
 ### default configuration files location:
 
 ```
-kubelet configuration   =     /var/lib/kubelet/config.yaml
+kubelet configuration               =  /var/lib/kubelet/config.yaml
+containerD configuration files      =  sudo vi /etc/containerd/config.toml
+Default DATA dir for ETCD           =  /var/lib/etcd
+path for containers LOG             = tail /var/log/containers/$CONTAINER_NAME_$CONTAINER_ID
+SystemD UNIT configuration          = /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+staticPodPath                       =  /etc/kubernetes/manifests
+ServiceAccounts are mounted
+    inside the POD as Volume        = /var/run/secrets/kubernetes.io/serviceaccount
+Self-SIgned Certificate Authority   = /etc/kubernetes/pki/ca.key  --> PRIVATE KEY
+                                    = /etc/kubernetes/pki/ca.crt  --> CA Certificate
 
-containerD configuration files  =    sudo vi /etc/containerd/config.toml
 
 Location for logs (not avail in KUBEADM clusters)
 -------------------------------------------------
@@ -14,6 +24,8 @@ Location for logs (not avail in KUBEADM clusters)
 
 
 ```
+
+![](images/k8snode.png)
 
 ## below path where secrets associated with serviceAccounts are mounted:
 ```

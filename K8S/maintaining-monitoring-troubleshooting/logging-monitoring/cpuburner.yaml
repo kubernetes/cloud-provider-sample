@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpuburner
+  labels:
+    app: cpuburner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cpuburner
+  template:
+    metadata:
+      labels:
+        app: cpuburner
+    spec:
+      containers:
+      - name: cpuburner
+        image: busybox
+        args: [/bin/sh, -c, 'dd if=/dev/zero of=/dev/null']
+      - name: container2
+        image: busybox
+        args: [/bin/sh, -c, 'while true; do echo "$(date)": $(hostname): container2; sleep 1; done']

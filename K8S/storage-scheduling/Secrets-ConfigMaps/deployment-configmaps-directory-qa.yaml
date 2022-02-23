@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-configmaps-directory-qa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-configmaps-directory-qa
+  template:
+    metadata:
+      labels:
+        app: hello-world-configmaps-directory-qa
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+          - name: httpdconfig
+            mountPath: "/etc/httpd"
+            readOnly: true
+      volumes:
+        - name: httpdconfig
+          configMap:
+            name: httpdconfigprod1

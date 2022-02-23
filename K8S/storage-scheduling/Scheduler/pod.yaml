@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-world-pod
+spec:
+  nodeName: 'c1-node3'
+  containers:
+  - name: hello-world
+    image: gcr.io/google-samples/hello-app:1.0
+    ports:
+    - containerPort: 8080

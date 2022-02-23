@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-2
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-world-2
+  template:
+    metadata:
+      labels:
+        app: hello-world-2
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 8081

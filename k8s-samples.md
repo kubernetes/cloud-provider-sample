@@ -322,5 +322,79 @@ spec:
 ```
 
 ######################################################################## 
-###  
+###  Networkpolicy That Denies All and ALLOWS only specific PORT
 ######################################################################## 
+
+Create a Networkpolicy That Denies All Access to the Maintenance Pod
+
+```
+kubectl describe pod maintenance -n foo  (to check the POD labels)
+
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: np-maintenance
+  namespace: foo
+spec:
+  podSelector:
+    matchLabels:
+      app: maintenance
+  policyTypes:
+  - Ingress
+  - Egress
+
+```
+kubectl label namespace users-backend app=users-backend
+
+```
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: np-users-backend-80
+  namespace: users-backend
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app: users-backend
+    ports:
+    - protocol: TCP
+      port: 80
+```
+ 
+
+######################################################################## 
+###  Create a Pod Which Uses a Sidecar to Expose the Main Container's Log File to stdout
+######################################################################## 
+
+```
+apiVersion```: v1
+kind: Pod
+metadata:
+  name: logging-sidecar
+  namespace: baz
+spec:
+  containers:
+  - name: busybox1
+    image: busybox
+    command: ['sh', '-c', 'while true; do echo Logging data > /output/output.log; sleep 5; done']
+    volumeMounts:
+    - name: sharedvol
+      mountPath: /output
+  - name: sidecar
+    image: busybox
+    command: ['sh', '-c', 'tail -f /input/output.log']
+    volumeMounts:
+    - name: sharedvol
+      mountPath: /input
+  volumes:
+  - name: sharedvol
+    emptyDir: {}
+
+
+```
