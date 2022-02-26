@@ -1,4 +1,165 @@
 ########################################################################  
+### Creating Secrets
+######################################################################## 
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app3
+data:
+  USERNAME: YXBwMmxvZ2lu
+  PASSWORD: UzBtZXRoaW5nU0BTdHIwbmch
+```
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app2
+stringData:
+  USERNAME: app2login
+  PASSWORD: S0methingS@Str0ng!s
+
+```
+
+
+########################################################################  
+### Different ways of passing ConfigMaps
+######################################################################## 
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-configmaps-directory-qa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-configmaps-directory-qa
+  template:
+    metadata:
+      labels:
+        app: hello-world-configmaps-directory-qa
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+          - name: httpdconfig
+            mountPath: "/etc/httpd"
+            readOnly: true
+      volumes:
+        - name: httpdconfig
+          configMap:
+            name: httpdconfigprod1
+
+```
+
+
+```
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        envFrom:
+          - configMapRef:
+              name: appconfigprod
+        ports:
+        - containerPort: 8080
+
+```
+
+########################################################################  
+### Pulling Image from PRIVATE REGISTRY
+######################################################################## 
+
+
+```
+    spec:
+      containers:
+      - name: hello-world
+        image: nocentino/hello-app:ps
+        ports:
+          - containerPort: 8080
+      imagePullSecrets:
+      - name: private-reg-cred
+
+
+```
+
+########################################################################  
+###  Different Ways of Pulling Secrets
+######################################################################## 
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-secrets-env-from
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-secrets-env-from
+  template:
+    metadata:
+      labels:
+        app: hello-world-secrets-env-from
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        envFrom:
+        - secretRef:
+            name: app1
+        ports:
+        - containerPort: 8080
+
+```
+
+```
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        env:
+        - name: app1username
+          valueFrom:
+            secretKeyRef:
+              name: app1
+              key: USERNAME 
+        - name: app1password
+          valueFrom:
+            secretKeyRef:
+              name: app1
+              key: PASSWORD 
+        ports:
+        - containerPort: 8080
+
+```
+
+```
+    spec:
+      volumes:
+        - name: appconfig
+          secret:
+            secretName: app1
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+          - name: appconfig
+            mountPath: "/etc/appconfig"
+
+```
+
+########################################################################  
 ###  pod in a namespace on a particular node  ###############
 ######################################################################## 
 ```
@@ -13,6 +174,14 @@ spec:
   containers:
   - name: nginx
     image: nginx
+    env:
+    - name: DATABASE_SERVERNAME
+      value: "sql.example.local"
+    - name: BACKEND_SERVERNAME
+      value: "be.example.local"
+    ports:
+    - containerPort: 8080
+
 ```
 
 ########################################################################  
@@ -86,6 +255,11 @@ spec:
     image: nginx
     ports:
     - containerPort: 80
+  dnsPolicy: "None"
+  dnsConfig:
+    nameservers:
+      - 9.9.9.9
+
 
 ```
 
@@ -416,6 +590,17 @@ spec:
     port: 80
     targetPort: 80
     nodePort: 30080
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-api
+spec:
+  type: ExternalName
+  externalName: hello-world.api.example.com
+  
 ```
 
 
@@ -440,7 +625,64 @@ spec:
             port:
               number: 80
 ```
----
+
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-path
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: path.example.com
+      http:
+        paths:
+        - path: /red
+          pathType: Prefix
+          backend:
+            service:
+              name: hello-world-service-red
+              port: 
+                number: 4242
+        - path: /blue
+          pathType: Prefix
+          backend:
+            service:
+              name: hello-world-service-blue
+              port: 
+                number: 4343
+  defaultBackend:
+    service:
+        name: hello-world-service-single
+        port: 
+            number: 80
+```
+
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-tls
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - tls.example.com
+    secretName: tls-secret
+  rules:
+  - host: tls.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-world-service-single
+            port:
+              number: 80
+
+```
+
 ########################################################################  
 ### create serviceaccounts
 ######################################################################## 
@@ -592,6 +834,241 @@ spec:
     persistentVolumeClaim:
       claimName: host-storage-pvc
 EOF
+```
+
+
+########################################################################
+### Affinity, Anti-Affinity and Tolerations
+######################################################################## 
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-web
+  template:
+    metadata:
+      labels:
+        app: hello-world-web
+    spec:
+      containers:
+      - name: hello-world-web
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-cache
+  template:
+    metadata:
+      labels:
+        app: hello-world-cache
+    spec:
+      containers:
+      - name: hello-world-cache
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - hello-world-web
+            topologyKey: "kubernetes.io/hostname"
+
+```
+
+
+```
+Anti Affinity
+-------------
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-web
+  template:
+    metadata:
+      labels:
+        app: hello-world-web
+    spec:
+      containers:
+      - name: hello-world-web
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - hello-world-web
+              topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world-cache
+  template:
+    metadata:
+      labels:
+        app: hello-world-cache
+    spec:
+      containers:
+      - name: hello-world-cache
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - hello-world-web
+            topologyKey: "kubernetes.io/hostname"
+
+```
+
+
+```
+Tolerations
+-----------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-tolerations
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-world-tolerations
+  template:
+    metadata:
+      labels:
+        app: hello-world-tolerations
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+      tolerations:
+      - key: "key"
+        operator: "Equal"
+        value: "MyTaint"
+        effect: "NoSchedule"
+
+
+```
+########################################################################
+### PV, PVC using NFS.
+######################################################################## 
+
+
+```
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-nfs-deployment
+spec:  
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      volumes:
+      - name: webcontent
+        persistentVolumeClaim:
+          claimName: pvc-nfs-data
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: webcontent
+          mountPath: "/usr/share/nginx/html/web-app"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-nfs-service
+spec:
+  selector:
+    app: nginx
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-nfs-data
+spec:
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 10Gi
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: 172.16.94.5
+    path: "/export/volumes/pod"
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-nfs-data
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+
 ```
 
 ########################################################################
