@@ -16,6 +16,388 @@ spec:
 ```
 
 ########################################################################  
+###   DEPLOYMENT with ROLLING UPDATE
+######################################################################## 
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+spec:
+  replicas: 20
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10%
+      maxSurge: 2
+  revisionHistoryLimit: 20
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:2.0
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world
+spec:
+  selector:
+    app: hello-world
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+
+```
+
+########################################################################  
+###  POD and DEPLOYMENT with LABELS
+######################################################################## 
+
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod-1
+  labels: 
+    app: MyWebApp
+    deployment: v1
+    tier: prod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+
+```
+
+--
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+  labels:
+    app: hello-world
+  namespace: playground1
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+
+```
+
+########################################################################  
+### JObs & CronJob and ParallelJObs
+######################################################################## 
+
+
+```
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello-world-cron
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: ubuntu
+            image: ubuntu
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "/bin/echo Hello from Pod $(hostname) at $(date)"
+          restartPolicy: Never
+
+
+----
+
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hello-world-job-fail
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      containers:
+      - name: ubuntu
+        image: ubuntu
+        command:
+         - "/bin/bash"
+         - "-c"
+         - "/bin/ech Hello from Pod $(hostname) at $(date)"
+      restartPolicy: Never
+
+---
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hello-world-job-parallel
+spec:
+  completions: 50
+  parallelism: 10
+  template:
+    spec:
+      containers:
+      - name: ubuntu
+        image: ubuntu
+        command:
+         - "/bin/bash"
+         - "-c"
+         - "/bin/echo Hello from Pod $(hostname) at $(date)"
+      restartPolicy: Never
+
+```
+
+########################################################################  
+### StatefulSet
+######################################################################## 
+
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+ name: mongo
+ labels:
+    name: mongo
+spec:
+ ports:
+ - port: 27017
+ clusterIP: None
+ selector:
+  role: mongo
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+ name: mongo
+spec:
+ selector:
+  matchLabels:
+    role: mongo
+ serviceName: "mongo"
+ replicas: 3
+ template:
+  metadata:
+   labels:
+    role: mongo
+    environment: test
+  spec:
+    terminationGracePeriodSeconds: 10
+    containers:
+    - name: mongo
+      image: mongo
+      command:
+        - mongod
+        - "--replSet"
+        - rs0
+        - "--smallfiles"
+        - "--noprealloc"
+      ports:
+        - containerPort: 27017
+      volumeMounts:
+        - name: mongo-persistent-storage
+          mountPath: /data/db
+    - name: mongo-sidecar
+      image: cvallance/mongo-k8s-sidecar
+      env:
+        - name: MONGO_SIDECAR_POD_LABELS
+          value: "role=mongo,environment=test"
+ volumeClaimTemplates:
+  - metadata:
+      name: mongo-persistent-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 100Gi
+
+```
+
+
+########################################################################  
+### ReplicaSet with matchExpressions
+######################################################################## 
+
+
+```
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+    name: hello-world-me
+spec:
+  replicas: 3
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - hello-world-pod-me
+  template:
+    metadata:
+      labels:
+        app: hello-world-pod-me
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+
+```
+
+########################################################################  
+### DaemonSet with NodeSelectors
+######################################################################## 
+
+```
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hello-world-ds
+spec:
+  selector:
+    matchLabels:
+      app: hello-world-app
+  template:
+    metadata:
+      labels:
+        app: hello-world-app
+    spec:
+      nodeSelector:
+        node: hello-world-ns
+      containers:
+        - name: hello-world
+          image: gcr.io/google-samples/hello-app:1.0
+
+```
+
+########################################################################  
+### INIT Containers
+######################################################################## 
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-containers
+spec:
+  initContainers:
+  - name: init-service
+    image: ubuntu
+    command: ['sh', '-c', "echo waiting for service; sleep 2"]
+  - name: init-database
+    image: ubuntu
+    command: ['sh', '-c', "echo waiting for database; sleep 2"]
+  containers:
+  - name: app-container
+    image: nginx
+
+```
+
+########################################################################  
+### POD RESTART POLICY
+######################################################################## 
+
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-world-onfailure-pod
+spec:
+  containers:
+  - name: hello-world
+    image: gcr.io/google-samples/hello-app:1.0
+  restartPolicy: OnFailure #Never
+    ports:
+    - containerPort: 80
+
+```
+
+########################################################################  
+### StartUpProbe / LivenessProbe / ReadinessProbe
+######################################################################## 
+
+
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world
+        image: gcr.io/google-samples/hello-app:1.0
+        ports:
+        - containerPort: 8080
+        startupProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 1
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+```
+
+########################################################################  
 ### Create a Service to Expose the web-frontend Deployment's Pods Externally
 ######################################################################## 
 

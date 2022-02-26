@@ -47,11 +47,6 @@ kubectl describe deployments hello-world | head
 
 #We can also look at the changes applied in each revision to see the new pod templates.
 kubectl rollout history deployment hello-world --revision=2
-kubectl rollout history deployment hello-world --revision=3
-
-
-#Let's undo our rollout to revision 2, which is our v2 container.
-kubectl rollout undo deployment hello-world --to-revision=2
 kubectl rollout status deployment hello-world
 echo $?
 

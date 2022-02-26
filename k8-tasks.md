@@ -317,7 +317,6 @@ kubectl exec password-db -n auth -- cat password.txt
 
 sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
 
-
 add this  --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
 
 
@@ -664,6 +663,7 @@ rules:
 - level: Metadata
 ```
 Configure Audit Logging -- sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
+
 ```
 - command:
   - kube-apiserver

@@ -6,5 +6,3 @@ spec:
   containers:
   - name: hello-world
     image: gcr.io/google-samples/hello-app:1.0
-    ports:
-    - containerPort: 80

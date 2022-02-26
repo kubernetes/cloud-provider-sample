@@ -49,3 +49,4 @@ k -n project-c13 get pod --show-labels | grep o3db
 k -n project-c13 scale sts o3db --replicas 1 --record
 k -n project-c13 describe sts o3db
 ```
+

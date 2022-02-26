@@ -15,8 +15,6 @@ ls -la /var/log
 tail /var/log/index.html
 exit
 
-#Let's specify a container name and access the consumer container in our Pod
-kubectl exec -it multicontainer-pod --container consumer -- /bin/sh
 ls -la /usr/share/nginx/html
 tail /usr/share/nginx/html/index.html
 exit

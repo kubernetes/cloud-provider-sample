@@ -4,9 +4,6 @@ cd ~/content/course/03/demos
 #Get a list of all the namespaces in our cluster
 kubectl get namespaces
 
-#get a list of all the API resources and if they can be in a namespace
-kubectl api-resources --namespaced=true | head
-kubectl api-resources --namespaced=false | head
 
 #Namespaces have state, Active and Terminating (when it's deleting)
 kubectl describe namespaces
