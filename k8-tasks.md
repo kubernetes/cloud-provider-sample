@@ -251,6 +251,16 @@ Once the STATUS shows Completed, view the Pod logs, replacing the Pod name place
 Check the results of the kube-bench tests. For the tests addressed, the results should now show [PASS]!
 ```
 
+
+```
+# see all
+kube-bench run --targets master
+
+# or just see the one
+kube-bench run --targets master --check 1.2.20
+
+```
+
 ########################################################################  
 ###       Checing the BINARIES and CHECKSUM 
 ########################################################################  
@@ -674,8 +684,324 @@ Configure Audit Logging -- sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
 
 ```
 
+### if mentioned that files on the host and container.
+
+```
+# add new Volumes
+volumes:
+  - name: audit-policy
+    hostPath:
+      path: /etc/kubernetes/audit-policy/policy.yaml
+      type: File
+  - name: audit-logs
+    hostPath:
+      path: /etc/kubernetes/audit-logs
+      type: DirectoryOrCreate
+
+
+# add new VolumeMounts
+volumeMounts:
+  - mountPath: /etc/kubernetes/audit-policy/policy.yaml
+    name: audit-policy
+    readOnly: true
+  - mountPath: /etc/kubernetes/audit-logs
+    name: audit-logs
+    readOnly: false
+
+```
+
 ########################################################################  
-###   END
+###   Image Scanning - Admission Control
+########################################################################
+
+```
+/etc/kubernetes/admission-control/admission-control.conf
+
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+- name: ImagePolicyWebhook
+  path: imagepolicy.conf
+
+```
+
+```
+/etc/kubernetes/admission-control/imagepolicy.conf
+
+{
+   "imagePolicy": {
+      "kubeConfigFile": "/etc/kubernetes/admission-control/imagepolicy_backend.kubeconfig",
+      "allowTTL": 50,
+      "denyTTL": 50,
+      "retryBackoff": 500,
+      "defaultAllow": true
+   }
+}
+```
+
+```
+/etc/kubernetes/admission-control/imagepolicy_backend.kubeconfig
+
+
+apiVersion: v1
+kind: Config
+clusters:
+- name: trivy-k8s-webhook
+  cluster:
+    certificate-authority: /etc/kubernetes/admission-control/imagepolicywebhook-ca.crt
+    server: ""
+contexts:
+- name: trivy-k8s-webhook
+  context:
+    cluster: trivy-k8s-webhook
+    user: api-server
+current-context: trivy-k8s-webhook
+preferences: {}
+users:
+- name: api-server
+  user:
+    client-certificate: /etc/kubernetes/admission-control/api-server-client.crt
+    client-key: /etc/kubernetes/admission-control/api-server-client.key
+```
+
+########################################################################  
+###  TRIVY  Image Scanning - FOR THE exiting PODs
 ########################################################################
 
 
+```
+GET PODS and CONTAINER IMAGE NAMES
+--------------------------
+kgp -n sunnydale -o jsonpath='{range .items[*]}{.metadata.name }{"\t"}{.spec.containers[*].image }{"\n"}{end}' --sort-by=.spec.containers[*].image
+
+SCAN WITH TRIVY
+--------------
+trivy image -s HIGH,CRITICAL amazonlinux:1
+
+```
+
+########################################################################  
+###  AppArmor PROFILE.
+########################################################################
+
+```
+
+#include <tunables/global>
+profile k8s-deny-write flags=(attach_disconnected) {
+  #include <abstractions/base>
+  file,
+  # Deny all file writes.
+  deny /** w,
+}
+
+ENFORCE the file in the WORKER NODE
+-----
+sudo apparmor_parser /home/cloud_user/k8s-deny-write
+
+
+Applying it to a container
+-------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: chewbacca
+  namespace: kashyyyk
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/busybox: localhost/k8s-deny-write
+spec:
+  containers:
+  - name: busybox
+    image: busybox:1.33.1
+    command: ['sh', '-c', 'while true; do echo hunter2 > password.txt; sleep 5; done']
+
+
+```
+
+
+####### #################################################################  
+###  Behaviour Analysis - FALCO profile
+########################################################################
+
+FALCO rules file
+
+```
+- rule: spawned_process_in_monitor_container
+  desc: A process was spawned in the Monitor container.
+  condition: container.name = "monitor" and evt.type = execve
+  output: "%evt.time,%container.id,%container.image,%user.uid,%proc.name"
+  priority: NOTICE
+
+
+
+RUN roles for 45 sec on the worker node
+---------------
+
+sudo falco -M 45 -r monitor_rules.yml > /home/cloud_user/falco_output.log
+
+```
+
+####### #################################################################  
+###  Cluster's Audit Policy
+########################################################################
+
+```
+suod vim /etc/kubernetes/audit-policy.yaml
+---------------------------
+
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - "RequestReceived"
+rules:
+  - level: RequestResponse
+    resources:
+    - group: ""
+      resources: ["configmaps"]
+  - level: Request
+    resources:
+    - group: ""
+      resources: ["services", "pods"]
+    namespaces: ["web"]
+  - level: Metadata
+    resources:
+    - group: ""
+      resources: ["secrets"]
+  - level: Metadata
+```
+
+```
+Configure audit logging for the cluster.
+--------------
+sudo vim /etc/kubernetes/manifests/kube-apiserver.yaml 
+
+- command:
+  - kube-apiserver
+  - --audit-policy-file=/etc/kubernetes/audit-policy.yaml
+  - --audit-log-path=/var/log/kubernetes/audit.log
+  - --audit-log-maxage=10
+  - --audit-log-maxbackup=1
+
+```
+
+######################################################################  
+###  Create a Secret and Encode & Decode Data
+######################################################################
+
+echo MTIzNDUK | base64 --decode
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: moe
+  namespace: larry
+type: Opaque
+data:
+  username: ZGJ1c2VyCg==
+  password: QTgzTWFlS296Cg==
+
+```
+
+Mount it to a POD
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-pod
+  namespace: larry
+spec:
+  containers:
+  - name: busybox
+    image: busybox:1.33.1
+    command: ['sh', '-c', 'cat /etc/credentials/username; cat /etc/credentials/password; while true; do sleep 5; done']
+    volumeMounts:
+    - name: credentails
+      mountPath: /etc/credentials
+      readOnly: true
+  volumes:
+  - names: credentails
+    secret:
+      secretName: moe
+
+```
+
+######################################################################  
+###  Create a RUNTIME CLASS and gVISOR Sandbox 
+######################################################################
+
+```
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: sandbox
+handler: runsc
+```
+
+use this class
+
+```
+
+ spec:
+      runtimeClassName: sandbox
+      containers:
+```
+
+check if it running in gVISOR with dmesg
+
+```
+k exec -n sunnydale buffy-86f6477848-kwkb8 -- dmesg
+```
+
+######################################################################  
+### Create a PodSecurityPolicy to Prevent Privileged Containers
+######################################################################
+
+```
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: nopriv-psp
+spec:
+  privileged: false
+  runAsUser:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+
+
+```
+
+```
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: use-nopriv-psp
+rules:
+- apiGroups: ['policy']
+  resources: ['podsecuritypolicies']
+  verbs:     ['use']
+  resourceNames:
+  - nopriv-psp
+```
+
+```
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hoth-sa-use-nopriv-psp
+roleRef:
+  kind: ClusterRole
+  name: use-nopriv-psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: hoth-sa
+  namespace: hoth
+
+```

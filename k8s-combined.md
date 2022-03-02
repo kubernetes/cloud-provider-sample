@@ -1042,3 +1042,19 @@ kubectl set image deployment nginx nginx=nginx:1.19.1 --namespace ns1
 
 
 ```
+
+
+
+## Location to check LOGS
+
+```
+journalctl | grep apiserver
+
+tail -f /var/log/syslog | grep apiserver
+
+/var/log/pods
+
+crictl ps
+
+crictl logs <CONTAINER_ID>
+```

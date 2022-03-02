@@ -1093,7 +1093,7 @@ kubectl get pods -n web-auth --show-labels
 ```
 
 ######################################################################## 
-###    ALLOW only particular POD from a PARTICULAR namespace
+###    ALLOW only particular POD from a PARTICULAR namespace and all PODs with labels app: auth-client Irrespective NS
 ######################################################################## 
 
 ```
@@ -1113,7 +1113,7 @@ spec:
     - namespaceSelector:
         matchLabels:
           role: auth
-      podSelector:
+    - podSelector:
         matchLabels:
           app: auth-client
     ports:
