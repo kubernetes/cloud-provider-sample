@@ -683,19 +683,7 @@ spec:
 
 ```
 
-########################################################################  
-### create serviceaccounts
-######################################################################## 
 
-```
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: webautomation
-  namespace: web
-EOF
-```
 ---
 ########################################################################  
 ### Create a ClusterRole That Provides Read Access to Pods
