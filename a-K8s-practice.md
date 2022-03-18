@@ -1,3 +1,40 @@
+
+```
+echo "set ts=2 sw=2" >> ~/.vimrc
+
+echo "autocmd FileType yaml setlocal et ts=2 ai sw=2 nu sts=0" >> ~/.vimrc
+
+alias k='kubectl' 
+alias kcsc='k config set-context'
+alias kcuc="k config use-context"
+
+alias gen="--dry-run=client -o yaml"
+alias kaf="kubectl apply -f"
+
+# Get K8S resources
+alias kgp="k get pods -o wide"
+alias kgd="k get deployment -o wide"
+alias kgs="k get svc -o wide"
+alias kgno="k get nodes -o wide"
+alias kgn="k get namespace"
+alias kgrb="kubectl get rolebinding"
+alias kgr="kubectl get role"
+
+
+alias kdpf='kubectl delete pod --force --grace-period=0'
+
+# Describe K8S resources 
+alias kdp="k describe pod"
+alias kdd="k describe deployment"
+alias kds="k describe service"
+alias kdno="k describe node"
+alias sb="--sort-by"
+alias ke="kubectl edit"
+alias kdrb="kubectl describe rolebinding"
+alias kdr="kubectl describe role"
+
+```
+
 ########################################################################  
 ###   Move Kubernetes Pods to a Secured Runtime Sandbox (gVisor)
 ########################################################################
