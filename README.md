@@ -1,4 +1,6 @@
-# cloud-provider-sample
+# cloud-provider-sample (ARCHIVE)
+
+**This repository is archived in favor of the cloud-provider sample contained in https://github.com/kubernetes/cloud-provider/tree/master/sample**
 
 This is a sample of how to build a cloud provider repo. This will build a Kubernetes image which deploys on bare metal.
 It uses the fake cloud provider and consumes the [kubernetes/kubernetes](https://github.com/kubernetes/kubernetes)
